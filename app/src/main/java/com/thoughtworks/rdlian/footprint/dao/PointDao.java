@@ -25,6 +25,10 @@ public class PointDao extends AbstractDao {
         return realm.where(Point.class).findFirst();
     }
 
+    public Point getLastPoint() {
+        return realm.where(Point.class).findAll().last();
+    }
+
     public void removeAllPoints() {
         realm.beginTransaction();
         RealmResults<Point> results = realm.where(Point.class).findAll();

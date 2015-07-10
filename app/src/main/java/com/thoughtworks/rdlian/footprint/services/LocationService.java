@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.location.Location;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.util.Log;
 
 import com.amap.api.location.AMapLocation;
 import com.amap.api.location.AMapLocationListener;
@@ -17,8 +18,6 @@ import com.thoughtworks.rdlian.footprint.dao.PointDao;
 import com.thoughtworks.rdlian.footprint.dao.model.Point;
 import com.thoughtworks.rdlian.footprint.dao.model.PointParcelable;
 
-
-
 /**
  * Created by rdlian on 7/9/15.
  */
@@ -29,10 +28,11 @@ public class LocationService extends Service implements AMapLocationListener {
     private Context context;
     private PointDao pointDao;
     private Intent locationIntent;
-    private Bundle bundle;
 
     private static int minTime = 20 * 1000;
     private static int minDistance = 10;
+
+    private boolean isNext = false;
 
     @Override
     public IBinder onBind(Intent intent) {
@@ -43,7 +43,6 @@ public class LocationService extends Service implements AMapLocationListener {
     public void onCreate() {
         super.onCreate();
         locationIntent = new Intent();
-        bundle = new Bundle();
         context = getApplicationContext();
         pointDao = new PointDao(context);
         locationManagerProxy = LocationManagerProxy.getInstance(context);
@@ -74,7 +73,9 @@ public class LocationService extends Service implements AMapLocationListener {
                 if (LocationStrategy.isBetterLocation(aMapLocation, currentLocation)) {
                     currentLocation = aMapLocation;
                     pointDao.insertPoint(currentLocation.getLatitude(), currentLocation.getLongitude());
-                    sendLocationChangedBroadcast(pointDao.getFirstPoint());
+                    sendLocationChangedBroadcast(pointDao.getLastPoint());
+                    Log.v("gaodeditudingweijieguo", currentLocation.toString());
+                    Log.v("gaodeditudingweijieguo", String.valueOf(currentLocation.getLatitude()));
                 }
             }
         }
@@ -83,11 +84,18 @@ public class LocationService extends Service implements AMapLocationListener {
     private void sendLocationChangedBroadcast(Point point){
         locationIntent.setAction(MainActivity.LOCATION_CHANGED_ACTION);
         PointParcelable pointParcelable = new PointParcelable();
+//        if (isNext) {
+//            pointParcelable.setLatitude(point.getLatitude());
+//            pointParcelable.setLongitude(point.getLongitude());
+//        } else {
+//            pointParcelable.setLatitude(34.16);
+//            pointParcelable.setLongitude(108.54);
+//            isNext = true;
+//        }
         pointParcelable.setLatitude(point.getLatitude());
         pointParcelable.setLongitude(point.getLongitude());
         locationIntent.putExtra("LOCATION", pointParcelable);
         sendBroadcast(locationIntent);
-
     }
 
     @Override

@@ -43,6 +43,8 @@ public class MainActivity extends AppCompatActivity {
     @InjectView(R.id.toolbar)
     Toolbar toolbar;
 
+    private PointParcelable currentPoint;
+
     private View.OnClickListener navigationOnClickListener = new View.OnClickListener() {
         @Override
         public void onClick(View v) {
@@ -182,16 +184,19 @@ public class MainActivity extends AppCompatActivity {
             String action = intent.getAction();
             if(action.equals(MainActivity.LOCATION_CHANGED_ACTION)){
                 Bundle bundle = intent.getExtras();
-                PointParcelable point = bundle.getParcelable("LOCATION");
-                Log.v("happy", String.valueOf(point.getLatitude()));
+                PointParcelable pointParcelable = bundle.getParcelable("LOCATION");
                 PolylineOptions polylineOptions = new PolylineOptions();
                 polylineOptions.color(Color.GREEN);//default width: 10
-                polylineOptions.add(new LatLng(43.828, 87.621));
-                polylineOptions.add(new LatLng(34.16, 108.54));
-                polylineOptions.add(new LatLng(45.808, 126.55));
+
+                if (null == currentPoint) {
+                    currentPoint = pointParcelable;
+                } else {
+                    polylineOptions.add(new LatLng(currentPoint.getLatitude(), currentPoint.getLongitude()));
+                    polylineOptions.add(new LatLng(pointParcelable.getLatitude(), pointParcelable.getLongitude()));
+                }
+
                 MainActivity.this.aMap.addPolyline(polylineOptions);
             }
         }
     }
-
 }
