@@ -182,12 +182,10 @@ public class MainActivity extends AppCompatActivity {
             String action = intent.getAction();
             if(action.equals(MainActivity.LOCATION_CHANGED_ACTION)){
                 Bundle bundle = intent.getExtras();
-//                String stringLocation = intent.getStringExtra("LOCATION");
-//                Log.v("happy", stringLocation);
                 PointParcelable point = bundle.getParcelable("LOCATION");
                 Log.v("happy", String.valueOf(point.getLatitude()));
                 PolylineOptions polylineOptions = new PolylineOptions();
-                polylineOptions.color(Color.GREEN).width(15);
+                polylineOptions.color(Color.GREEN);//default width: 10
                 polylineOptions.add(new LatLng(43.828, 87.621));
                 polylineOptions.add(new LatLng(34.16, 108.54));
                 polylineOptions.add(new LatLng(45.808, 126.55));

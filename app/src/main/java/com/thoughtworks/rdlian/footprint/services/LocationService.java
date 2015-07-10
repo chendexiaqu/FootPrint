@@ -17,9 +17,6 @@ import com.thoughtworks.rdlian.footprint.dao.PointDao;
 import com.thoughtworks.rdlian.footprint.dao.model.Point;
 import com.thoughtworks.rdlian.footprint.dao.model.PointParcelable;
 
-import org.apache.commons.beanutils.PropertyUtils;
-
-import java.lang.reflect.InvocationTargetException;
 
 
 /**
@@ -84,19 +81,10 @@ public class LocationService extends Service implements AMapLocationListener {
     }
 
     private void sendLocationChangedBroadcast(Point point){
-//        bundle.putString("LOCATION", String.valueOf(point.getLatitude()));
         locationIntent.setAction(MainActivity.LOCATION_CHANGED_ACTION);
-//        locationIntent.putExtras(bundle);
         PointParcelable pointParcelable = new PointParcelable();
-        try {
-            PropertyUtils.copyProperties(pointParcelable, point);
-        } catch (IllegalAccessException e) {
-            e.printStackTrace();
-        } catch (InvocationTargetException e) {
-            e.printStackTrace();
-        } catch (NoSuchMethodException e) {
-            e.printStackTrace();
-        }
+        pointParcelable.setLatitude(point.getLatitude());
+        pointParcelable.setLongitude(point.getLongitude());
         locationIntent.putExtra("LOCATION", pointParcelable);
         sendBroadcast(locationIntent);
 
