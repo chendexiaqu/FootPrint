@@ -9,6 +9,7 @@ public class Point extends RealmObject {
 
     private double latitude;
     private double longitude;
+    private String name;
 
     public Point(){}
 
@@ -28,4 +29,11 @@ public class Point extends RealmObject {
         this.longitude = longitude;
     }
 
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
 }

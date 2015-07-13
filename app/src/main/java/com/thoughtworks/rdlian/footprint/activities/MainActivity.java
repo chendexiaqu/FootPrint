@@ -1,40 +1,36 @@
-package com.thoughtworks.rdlian.footprint;
+package com.thoughtworks.rdlian.footprint.activities;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.graphics.Color;
+import android.location.Location;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.Menu;
-import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.Toast;
 
 import com.amap.api.maps.AMap;
 import com.amap.api.maps.CameraUpdateFactory;
+import com.amap.api.maps.LocationSource;
 import com.amap.api.maps.MapView;
 import com.amap.api.maps.UiSettings;
-import com.amap.api.maps.model.ArcOptions;
 import com.amap.api.maps.model.BitmapDescriptorFactory;
 import com.amap.api.maps.model.LatLng;
 import com.amap.api.maps.model.MyLocationStyle;
 import com.amap.api.maps.model.PolylineOptions;
-import com.thoughtworks.rdlian.footprint.dao.PointDao;
-import com.thoughtworks.rdlian.footprint.dao.model.Point;
-import com.thoughtworks.rdlian.footprint.dao.model.PointParcelable;
+import com.thoughtworks.rdlian.footprint.R;
 import com.thoughtworks.rdlian.footprint.services.LocationService;
-
-import java.util.List;
 
 import butterknife.ButterKnife;
 import butterknife.InjectView;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements LocationSource {
 
     public static String LOCATION_CHANGED_ACTION = "com.thoughtworks.rdlian.footprint.LOCATION_CHANGED_ACTION";
 
@@ -42,8 +38,6 @@ public class MainActivity extends AppCompatActivity {
     MapView mapView;
     @InjectView(R.id.toolbar)
     Toolbar toolbar;
-
-    private PointParcelable currentPoint;
 
     private View.OnClickListener navigationOnClickListener = new View.OnClickListener() {
         @Override
@@ -56,85 +50,66 @@ public class MainActivity extends AppCompatActivity {
     private UiSettings uiSettings;
 
     private LocationBroadCastReceiver locationBroadCastReceiver;
+    private OnLocationChangedListener mListener;
 
-
-    private PointDao pointDao;
-    private Intent intent;
-
+    private Intent startLocationIntent;
+    private Location currentLocation;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        ButterKnife.inject(this);
-        mapView.onCreate(savedInstanceState);
-        init();
-//        basicCRUD();
-        intent =new Intent(this, LocationService.class);
-        startService(intent);
+        initView(savedInstanceState);
+        startLocationService();
         registerBroadcastReceiver();
-
     }
 
-    private void registerBroadcastReceiver(){
-        locationBroadCastReceiver = new LocationBroadCastReceiver();
-        IntentFilter filter = new IntentFilter(LOCATION_CHANGED_ACTION);
-        registerReceiver(locationBroadCastReceiver, filter);
+    private void initView(Bundle savedInstanceState) {
+        ButterKnife.inject(this);
+        initToolBar();
+        initAmapComponent(savedInstanceState);
     }
 
-    private void basicCRUD() {
-        pointDao = new PointDao(this);
-        pointDao.removeAllPoints();
-        pointDao.insertPoint(43.828, 87.621);//first
-        pointDao.insertPoint(34.16, 108.54);//second
-        pointDao.insertPoint(45.808, 126.55);//third
-        List<Point> points = pointDao.getAllPoints();
-        LatLng first = new LatLng(points.get(0).getLatitude(), points.get(0).getLongitude());
-        LatLng second = new LatLng(points.get(1).getLatitude(), points.get(1).getLongitude());
-        LatLng third = new LatLng(points.get(2).getLatitude(), points.get(2).getLongitude());
-        // 绘制一个经过北京的弧形
-        ArcOptions arcOptions = new ArcOptions();
-        arcOptions.point(first, second, third);
-        arcOptions.strokeColor(Color.RED);
-        aMap.addArc(arcOptions);
-
-    }
-
-    private void init() {
+    private void initToolBar() {
         setSupportActionBar(toolbar);
         toolbar.setNavigationIcon(R.drawable.footprint);
         toolbar.setNavigationOnClickListener(navigationOnClickListener);
-        MyLocationStyle myLocationStyle = null;
+        getSupportActionBar().setDisplayShowTitleEnabled(false);
+    }
+
+    private void initAmapComponent(Bundle savedInstanceState) {
         if (aMap == null) {
+            mapView.onCreate(savedInstanceState);
             aMap = mapView.getMap();
-            //aMap.setMapType(AMap.MAP_TYPE_SATELLITE);//开启卫星视图
             uiSettings = aMap.getUiSettings();
-            myLocationStyle = new MyLocationStyle();
+            MyLocationStyle myLocationStyle = new MyLocationStyle();
             myLocationStyle.myLocationIcon(BitmapDescriptorFactory.fromResource(R.drawable.location_marker));
             myLocationStyle.strokeColor(Color.BLACK);
             myLocationStyle.radiusFillColor(Color.argb(50, 0, 0, 255));
             myLocationStyle.strokeWidth(2);
+            uiSettings.setCompassEnabled(true);//show compass
+            uiSettings.setScaleControlsEnabled(true);//comparing rule
+            uiSettings.setMyLocationButtonEnabled(true);// myLocation button
+            aMap.moveCamera(CameraUpdateFactory.zoomTo(15));//zoom to size 15
+            aMap.setMyLocationStyle(myLocationStyle);
+            aMap.setLocationSource(this);//start location listener
+            aMap.setMyLocationEnabled(true);// enable location and show my location
+            aMap.setMyLocationType(AMap.LOCATION_TYPE_MAP_FOLLOW);// set location type
         }
-        uiSettings.setCompassEnabled(true);//是否显示指南针
-        uiSettings.setScaleControlsEnabled(true);//显示比例尺
-        uiSettings.setMyLocationButtonEnabled(true);// 是否显示定位按钮
-        aMap.moveCamera(CameraUpdateFactory.zoomTo(15));//zoom to size 15
-        aMap.setMyLocationStyle(myLocationStyle);
-//        aMap.setLocationSource(this);//设置定位监听
-//        aMap.setMyLocationEnabled(true);// 是否可触发定位并显示定位层
-        aMap.setMyLocationType(AMap.LOCATION_TYPE_MAP_FOLLOW);
     }
 
     @Override
     protected void onResume() {
         super.onResume();
         mapView.onResume();
+        startLocationService();
     }
 
     @Override
     protected void onPause() {
         super.onPause();
         mapView.onPause();
+        stopLocationService();
     }
 
     @Override
@@ -147,16 +122,23 @@ public class MainActivity extends AppCompatActivity {
     protected void onDestroy() {
         super.onDestroy();
         mapView.onDestroy();
-        pointDao.dispose();
-        intent =new Intent(this, LocationService.class);
-        stopService(intent);
+        stopLocationService();
+        unRegisterBroadcastReceiver();
+    }
+
+    private void startLocationService() {
+        startLocationIntent =new Intent(this, LocationService.class);
+        startService(startLocationIntent);
+    }
+
+    private void stopLocationService() {
+        startLocationIntent =new Intent(this, LocationService.class);
+        stopService(startLocationIntent);
     }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        MenuInflater menuInflater = getMenuInflater();
-        menuInflater.inflate(R.menu.menu_main, menu);
-
+        getMenuInflater().inflate(R.menu.menu_main, menu);
         return super.onCreateOptionsMenu(menu);
     }
 
@@ -177,25 +159,44 @@ public class MainActivity extends AppCompatActivity {
         return true;
     }
 
-    private class LocationBroadCastReceiver extends BroadcastReceiver {
+    @Override
+    public void activate(OnLocationChangedListener onLocationChangedListener) {
+        mListener = onLocationChangedListener;
+    }
 
+    @Override
+    public void deactivate() {
+        mListener = null;
+    }
+
+    private void registerBroadcastReceiver(){
+        locationBroadCastReceiver = new LocationBroadCastReceiver();
+        IntentFilter filter = new IntentFilter(LOCATION_CHANGED_ACTION);
+        registerReceiver(locationBroadCastReceiver, filter);
+    }
+
+    private void unRegisterBroadcastReceiver() {
+        unregisterReceiver(locationBroadCastReceiver);
+    }
+
+    private class LocationBroadCastReceiver extends BroadcastReceiver {
         @Override
         public void onReceive(Context context, Intent intent) {
             String action = intent.getAction();
             if(action.equals(MainActivity.LOCATION_CHANGED_ACTION)){
                 Bundle bundle = intent.getExtras();
-                PointParcelable pointParcelable = bundle.getParcelable("LOCATION");
-                PolylineOptions polylineOptions = new PolylineOptions();
-                polylineOptions.color(Color.GREEN);//default width: 10
-
-                if (null == currentPoint) {
-                    currentPoint = pointParcelable;
-                } else {
-                    polylineOptions.add(new LatLng(currentPoint.getLatitude(), currentPoint.getLongitude()));
-                    polylineOptions.add(new LatLng(pointParcelable.getLatitude(), pointParcelable.getLongitude()));
+                Location newLocation = bundle.getParcelable("LOCATION");
+                mListener.onLocationChanged(newLocation);
+                if (null != currentLocation && null != newLocation) {
+                    PolylineOptions polylineOptions = new PolylineOptions();
+                    polylineOptions.add(new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude()),
+                            new LatLng(newLocation.getLatitude(), newLocation.getLongitude()));
+                    polylineOptions.color(Color.BLUE);
+                    MainActivity.this.aMap.addPolyline(polylineOptions);
                 }
-
-                MainActivity.this.aMap.addPolyline(polylineOptions);
+                currentLocation = newLocation;
+                Log.v("accuracy", String.valueOf(newLocation.getAccuracy()));
+                Log.v("provider", String.valueOf(newLocation.getProvider()));
             }
         }
     }

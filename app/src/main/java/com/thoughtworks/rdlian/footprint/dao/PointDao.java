@@ -25,6 +25,10 @@ public class PointDao extends AbstractDao {
         return realm.where(Point.class).findFirst();
     }
 
+    public List<Point> getPointsByName(String name) {
+        return realm.where(Point.class).contains("name", name).findAll();
+    }
+
     public Point getLastPoint() {
         return realm.where(Point.class).findAll().last();
     }
@@ -39,6 +43,7 @@ public class PointDao extends AbstractDao {
     public void insertPoint(double latitude, double longitude) {
         realm.beginTransaction();
         Point point = realm.createObject(Point.class);
+        point.setName("lianrundong");
         point.setLatitude(latitude);
         point.setLongitude(longitude);
         realm.commitTransaction();
